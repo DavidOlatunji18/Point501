@@ -6,7 +6,7 @@ natural-language fantasy questions through the Anthropic API.
 
 ## Status
 
-**Phase 4 (this commit): RAG ingestion pipeline for fantasy news/analysis.**
+**Phase 5 (this commit): `/chat` and `/lineup` - the AI reasoning endpoints.**
 
 Implemented:
 - Project structure (`app/core`, `app/db`, `app/models`, `app/schemas`,
@@ -46,9 +46,27 @@ Implemented:
   rejected with 409, including under a concurrent-request race. SQLite
   (`Article` model) tracks metadata for listing/deleting; the chunk text +
   embeddings live only in Chroma.
+- `POST /chat` (`app/services/chat.py`) - a single flexible endpoint for any
+  natural-language question (start/sit, waivers, trades, general strategy -
+  no separate hardcoded endpoint per question type). Automatically includes
+  the specified team's roster (with live injury status) and a RAG search
+  over ingested articles as context, then runs an agentic tool-use loop
+  against Claude Opus 5 (`app/services/chat_tools.py`: search players,
+  schedule/byes, box scores, trending adds/drops, targeted article search)
+  so the model pulls exactly the additional data a given question needs.
+  Returns `{answer, sources}`.
+- `GET /lineup` (`app/services/lineup.py`) - a structured counterpart to
+  `/chat` for the single highest-value use case: given a team's roster +
+  starting lineup slots, recommend a full lineup for the week. Forces the
+  model to respond via a single `strict: true` tool call
+  (`recommend_lineup`) instead of freeform text, so the result is
+  guaranteed-parseable - then validates the model's own output (no
+  duplicate/hallucinated/omitted player_ids) before returning it. Defaults
+  week/season/season_type from Sleeper's live NFL state when not specified.
 
-Not yet implemented (next phase):
-- `/chat` (RAG + roster context + Anthropic) and `/lineup` (optimizer)
+Not yet implemented: a frontend (React), Docker/CI/CD/Kubernetes/cloud
+deployment - deferred until the backend is fully working end-to-end, per
+plan.
 
 ### Note: ESPN API is unofficial
 
@@ -65,7 +83,7 @@ Undocumented and can change without notice. Kept isolated behind
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env  # then fill in ANTHROPIC_API_KEY when we get to /chat
+cp .env.example .env  # then fill in ANTHROPIC_API_KEY (required for /chat and /lineup)
 ```
 
 ## Run

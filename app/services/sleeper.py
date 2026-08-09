@@ -81,6 +81,16 @@ async def get_nfl_state() -> dict[str, Any]:
     return await _get("/state/nfl")
 
 
+_SLEEPER_SEASON_TYPE_MAP = {"pre": 1, "regular": 2, "post": 3}
+
+
+def season_type_from_sleeper(value: str | None) -> int:
+    """Maps Sleeper's `season_type` string (from get_nfl_state) to ESPN's
+    numeric convention (1=pre, 2=regular, 3=post). Defaults to regular
+    season for unrecognized values (e.g. "off")."""
+    return _SLEEPER_SEASON_TYPE_MAP.get(value or "", 2)
+
+
 async def get_user(username_or_id: str) -> dict[str, Any]:
     """Resolve a Sleeper username (or user_id) to a user object with user_id."""
     return await _get_or_404(f"/user/{username_or_id}")
