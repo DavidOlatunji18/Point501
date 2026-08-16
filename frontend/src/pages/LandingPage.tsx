@@ -28,7 +28,7 @@ export default function LandingPage() {
 
           <div className="hidden sm:block" />
           <div className="flex items-center gap-2 sm:justify-self-center">
-            <img src="/Point501_logo_cropped.png" alt="Point501 logo" className="h-9 w-auto" />
+            <img src="/Point501_logo_new_cropped.png" alt="Point501 logo" className="h-9 w-auto" />
             <span className="text-3xl font-extrabold tracking-tight text-gold">Point501</span>
           </div>
           {/* Placeholder until real auth exists - currently just enters the app */}
@@ -60,7 +60,7 @@ export default function LandingPage() {
               <X className="h-6 w-6" />
             </button>
             <div className="flex items-center gap-2">
-              <img src="/Point501_logo_cropped.png" alt="Point501 logo" className="h-9 w-auto" />
+              <img src="/Point501_logo_new_cropped.png" alt="Point501 logo" className="h-9 w-auto" />
               <span className="text-3xl font-extrabold tracking-tight text-gold">Point501</span>
             </div>
           </div>

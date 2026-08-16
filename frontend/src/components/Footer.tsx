@@ -25,7 +25,7 @@ export default function Footer() {
     <footer className="relative border-t border-outline">
       <div className="mx-auto flex h-24 max-w-6xl items-center justify-between px-6">
         <div className="flex items-center gap-2">
-          <img src="/Point501_logo_cropped.png" alt="Point501 logo" className="h-6 w-auto" />
+          <img src="/Point501_logo_new_cropped.png" alt="Point501 logo" className="h-6 w-auto" />
           <span className="text-sm font-extrabold text-gold">Point501</span>
           <span className="hidden text-sm text-slate-500 sm:inline">
             © {new Date().getFullYear()} All rights reserved.

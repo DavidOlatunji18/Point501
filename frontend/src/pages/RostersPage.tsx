@@ -50,6 +50,7 @@ const DEFAULT_SLOTS = "QB, RB, RB, WR, WR, TE, FLEX, DST, K";
 export default function RostersPage() {
   const { teams, setSelectedTeamId, loading, error, refresh } = useTeams();
   const [showCreate, setShowCreate] = useState(false);
+  const [activeSlot, setActiveSlot] = useState<number | null>(null);
   const [viewingTeamId, setViewingTeamId] = useState<number | null>(null);
 
   const viewingTeam = teams.find((t) => t.id === viewingTeamId) ?? null;
@@ -57,6 +58,21 @@ export default function RostersPage() {
   function handleSelectTeam(id: number) {
     setSelectedTeamId(id);
     setViewingTeamId(id);
+  }
+
+  function handleAddSlotClick(i: number) {
+    if (showCreate && activeSlot === i) {
+      setShowCreate(false);
+      setActiveSlot(null);
+    } else {
+      setShowCreate(true);
+      setActiveSlot(i);
+    }
+  }
+
+  function handleCancelCreate() {
+    setShowCreate(false);
+    setActiveSlot(null);
   }
 
   return (
@@ -88,9 +104,9 @@ export default function RostersPage() {
             {Array.from({ length: 3 - teams.length }).map((_, i) => (
               <button
                 key={i}
-                onClick={() => setShowCreate((v) => !v)}
+                onClick={() => handleAddSlotClick(i)}
                 className={`flex min-h-32 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed p-6 text-slate-400 hover:border-gold hover:text-gold ${
-                  showCreate ? "border-gold text-gold" : "border-outline"
+                  showCreate && activeSlot === i ? "border-gold text-gold" : "border-outline"
                 }`}
               >
                 <span className="text-2xl font-bold leading-none">+</span>
@@ -107,8 +123,10 @@ export default function RostersPage() {
             <CreateTeamForm
               onCreated={() => {
                 setShowCreate(false);
+                setActiveSlot(null);
                 refresh();
               }}
+              onCancel={handleCancelCreate}
             />
           )}
         </>
@@ -142,7 +160,13 @@ function TeamCard({ team, onSelect }: { team: Team; onSelect: () => void }) {
   );
 }
 
-function CreateTeamForm({ onCreated }: { onCreated: () => void }) {
+function CreateTeamForm({
+  onCreated,
+  onCancel,
+}: {
+  onCreated: () => void;
+  onCancel: () => void;
+}) {
   const [mode, setMode] = useState<"manual" | "sleeper">("manual");
   const [name, setName] = useState("");
   const [rosterText, setRosterText] = useState("");
@@ -283,13 +307,23 @@ function CreateTeamForm({ onCreated }: { onCreated: () => void }) {
 
       {error && <p className="text-sm text-red-400">{error}</p>}
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-hover disabled:opacity-50"
-      >
-        {submitting ? "Creating…" : "Create team"}
-      </button>
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={submitting}
+          className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-hover disabled:opacity-50"
+        >
+          {submitting ? "Creating…" : "Create team"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={submitting}
+          className="rounded-md border border-red-800 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-950/40 disabled:opacity-50"
+        >
+          Nevermind
+        </button>
+      </div>
     </form>
   );
 }
@@ -417,7 +451,7 @@ function TeamDetail({ team, onChanged }: { team: Team; onChanged: () => void }) 
             disabled={busy}
             className="rounded-md border border-red-800 px-3 py-1.5 text-sm font-medium text-red-400 hover:bg-red-950/40 disabled:opacity-50"
           >
-            Delete team
+            Nuke team
           </button>
         </div>
       </div>
@@ -681,7 +715,7 @@ function PasteMoreForm({ teamId, onAdded }: { teamId: number; onAdded: () => voi
             checked={replace}
             onChange={(e) => setReplace(e.target.checked)}
           />
-          Replace entire roster
+          Nuke entire roster
         </label>
         <button
           type="submit"

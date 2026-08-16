@@ -17,6 +17,8 @@ MAX_TOOL_ITERATIONS = 6
 AUTO_ARTICLE_SEARCH_LIMIT = 4
 MAX_TOKENS = 8192
 
+_SEASON_TYPE_LABELS = {1: "preseason", 2: "regular season", 3: "postseason"}
+
 SYSTEM_PROMPT_TEMPLATE = """You are a fantasy football assistant. Answer the \
 user's question directly and concisely, grounded in the data provided below \
 and any tool calls you make - not general knowledge about players that may \
@@ -74,16 +76,16 @@ async def answer_question(message: str, team: Team | None) -> dict[str, Any]:
     settings = get_settings()
     client = get_client()
 
-    state, roster_context, auto_articles = await asyncio.gather(
-        sleeper.get_nfl_state(),
+    (week, season, season_type), roster_context, auto_articles = await asyncio.gather(
+        sleeper.resolve_current_week(),
         _roster_context_or_empty(team),
         asyncio.to_thread(articles_service.search_articles, message, AUTO_ARTICLE_SEARCH_LIMIT),
     )
 
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
-        week=state.get("week"),
-        season=state.get("season"),
-        season_type=state.get("season_type"),
+        week=week,
+        season=season,
+        season_type=_SEASON_TYPE_LABELS.get(season_type, season_type),
         roster_section=_format_roster_section(team, roster_context),
         articles_section=_format_articles_section(auto_articles),
     )
@@ -101,7 +103,6 @@ async def answer_question(message: str, team: Team | None) -> dict[str, Any]:
             messages=messages,
             tools=chat_tools.TOOLS,
             thinking={"type": "adaptive"},
-            output_config={"effort": "high"},
         )
 
     response = await call_model()

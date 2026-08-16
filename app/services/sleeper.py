@@ -91,6 +91,35 @@ def season_type_from_sleeper(value: str | None) -> int:
     return _SLEEPER_SEASON_TYPE_MAP.get(value or "", 2)
 
 
+async def resolve_current_week(
+    week: int | None = None, season: int | None = None, season_type: int | None = None
+) -> tuple[int, int, int]:
+    """Resolves week/season/season_type, defaulting from Sleeper's live NFL
+    state for any field not explicitly provided. When season_type is being
+    defaulted and the live state is preseason, rolls forward to the upcoming
+    regular season's week 1 instead - preseason weeks aren't meaningful for
+    lineup/chat purposes (almost no teams play, byes don't apply yet, and
+    stat-grounded advice needs the regular season to have actually started).
+    """
+    if week is not None and season is not None and season_type is not None:
+        return week, season, season_type
+
+    state = await get_nfl_state()
+    resolved_season_type = (
+        season_type if season_type is not None else season_type_from_sleeper(state.get("season_type"))
+    )
+    default_week = state["week"]
+    if season_type is None and resolved_season_type == 1:
+        resolved_season_type = 2
+        default_week = 1
+
+    return (
+        week if week is not None else default_week,
+        season if season is not None else int(state["season"]),
+        resolved_season_type,
+    )
+
+
 async def get_user(username_or_id: str) -> dict[str, Any]:
     """Resolve a Sleeper username (or user_id) to a user object with user_id."""
     return await _get_or_404(f"/user/{username_or_id}")

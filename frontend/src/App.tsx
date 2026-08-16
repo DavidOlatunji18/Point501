@@ -3,6 +3,7 @@ import { NavLink, Outlet, Route, Routes } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { TeamsProvider } from "./context/TeamsContext";
 import { LineupProvider } from "./context/LineupContext";
+import { ChatProvider } from "./context/ChatContext";
 import Footer from "./components/Footer";
 import LandingPage from "./pages/LandingPage";
 import RostersPage from "./pages/RostersPage";
@@ -48,7 +49,7 @@ function AppShell() {
             </NavLink>
           </nav>
           <div className="flex items-center gap-2 sm:justify-self-center">
-            <img src="/Point501_logo_cropped.png" alt="Point501 logo" className="h-9 w-auto" />
+            <img src="/Point501_logo_new_cropped.png" alt="Point501 logo" className="h-9 w-auto" />
             <span className="text-3xl font-extrabold tracking-tight text-gold">Point501</span>
           </div>
           {/* Reserved for future Log in / Sign up buttons - keeps the logo grid-centered */}
@@ -67,7 +68,7 @@ function AppShell() {
               <X className="h-6 w-6" />
             </button>
             <div className="flex items-center gap-2">
-              <img src="/Point501_logo_cropped.png" alt="Point501 logo" className="h-9 w-auto" />
+              <img src="/Point501_logo_new_cropped.png" alt="Point501 logo" className="h-9 w-auto" />
               <span className="text-3xl font-extrabold tracking-tight text-gold">Point501</span>
             </div>
           </div>
@@ -105,14 +106,16 @@ function App() {
   return (
     <TeamsProvider>
       <LineupProvider>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route element={<AppShell />}>
-            <Route path="/rosters" element={<RostersPage />} />
-            <Route path="/chat" element={<ChatPage />} />
-            <Route path="/lineup" element={<LineupPage />} />
-          </Route>
-        </Routes>
+        <ChatProvider>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route element={<AppShell />}>
+              <Route path="/rosters" element={<RostersPage />} />
+              <Route path="/chat" element={<ChatPage />} />
+              <Route path="/lineup" element={<LineupPage />} />
+            </Route>
+          </Routes>
+        </ChatProvider>
       </LineupProvider>
     </TeamsProvider>
   );

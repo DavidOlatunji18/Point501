@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import { useTeams } from "../context/TeamsContext";
-import { api, type ChatSource } from "../lib/api";
+import { useChat } from "../context/ChatContext";
+import { api } from "../lib/api";
 import TeamSelector from "../components/TeamSelector";
 
 const markdownComponents = {
@@ -18,16 +19,9 @@ const markdownComponents = {
   ),
 };
 
-interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-  sources?: ChatSource[];
-  isError?: boolean;
-}
-
 export default function ChatPage() {
   const { selectedTeamId } = useTeams();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const { messages, setMessages } = useChat();
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
 
@@ -64,7 +58,17 @@ export default function ChatPage() {
     <div className="flex h-[calc(100vh-8rem)] flex-col">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-extrabold text-gold">Chat</h1>
-        <TeamSelector allowNone />
+        <div className="flex items-center gap-3">
+          <TeamSelector allowNone />
+          {messages.length > 0 && (
+            <button
+              onClick={() => setMessages([])}
+              className="rounded-md border border-outline px-3 py-1.5 text-sm font-medium text-slate-300 hover:bg-panel-alt"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto rounded-lg border border-outline bg-panel p-4">

@@ -154,7 +154,8 @@ export default function LineupPage() {
 
       {!lineup && !loading && !error && (
         <p className="text-sm text-slate-400">
-          Pick a team and click "Build lineup" to get this week's recommended starters.
+          Pick a team and click "Build lineup" to get this week's recommended starters — crunched
+          from real season stats, matchups, and injury reports, not vibes.
         </p>
       )}
 
