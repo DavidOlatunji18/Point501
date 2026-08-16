@@ -6,6 +6,7 @@ from app.db.session import get_db
 from app.models.team import RosterPlayer, Team
 from app.schemas.team import (
     DEFAULT_LINEUP_SLOTS,
+    ApplyLineupRequest,
     PlayerCreate,
     PlayerOut,
     PlayerUpdate,
@@ -15,6 +16,7 @@ from app.schemas.team import (
     TeamUpdate,
 )
 from app.services import roster_import
+from app.services import sleeper
 from app.services.roster_import import RosterImportError
 from app.services.sleeper import SleeperNotFoundError
 
@@ -50,6 +52,16 @@ def _as_roster_players(entries: list[roster_import.ParsedRosterEntry]) -> list[R
         )
         for e in entries
     ]
+
+
+def _validate_slot(position: str | None, slot: str | None) -> None:
+    """FLEX can only hold RB/WR/TE - reject an assignment that would put an
+    ineligible position (e.g. QB, K, DST) there."""
+    if slot == "FLEX" and position not in roster_import.FLEX_ELIGIBLE_POSITIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{position or 'This position'} is not FLEX-eligible (FLEX only holds RB/WR/TE)",
+        )
 
 
 def _check_team_capacity(db: Session) -> None:
@@ -95,14 +107,16 @@ async def create_team(payload: TeamCreate, db: Session = Depends(get_db)):
     else:
         parsed = roster_import.parse_roster_text(payload.roster_text) if payload.roster_text else []
         resolved = await roster_import.resolve_entries(parsed) if parsed else []
+        starting_lineup_slots = (
+            payload.starting_lineup_slots
+            if payload.starting_lineup_slots is not None
+            else list(DEFAULT_LINEUP_SLOTS)
+        )
+        roster_import.assign_starting_slots(resolved, starting_lineup_slots)
         team = Team(
             name=payload.name,
             source="manual",
-            starting_lineup_slots=(
-                payload.starting_lineup_slots
-                if payload.starting_lineup_slots is not None
-                else list(DEFAULT_LINEUP_SLOTS)
-            ),
+            starting_lineup_slots=starting_lineup_slots,
             players=_as_roster_players(resolved),
         )
 
@@ -161,19 +175,44 @@ async def sync_team_from_sleeper(team_id: int, db: Session = Depends(get_db)):
 @router.post("/{team_id}/players", response_model=PlayerOut, status_code=201)
 async def add_player(team_id: int, payload: PlayerCreate, db: Session = Depends(get_db)):
     team = _get_team_or_404(db, team_id)
-    resolved = await roster_import.resolve_entry(
-        roster_import.ParsedRosterEntry(
-            name=payload.name, position=payload.position, nfl_team=payload.nfl_team
+
+    if payload.sleeper_player_id:
+        # Caller already knows the exact player (e.g. picked from an
+        # autocomplete) - look them up directly instead of fuzzy-matching.
+        try:
+            live = await sleeper.get_player(payload.sleeper_player_id)
+        except SleeperNotFoundError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unknown sleeper_player_id '{payload.sleeper_player_id}'",
+            )
+        position = roster_import.normalize_position(payload.position or live.get("position"))
+        _validate_slot(position, payload.slot)
+        player = RosterPlayer(
+            team_id=team.id,
+            name=payload.name,
+            position=position,
+            nfl_team=payload.nfl_team or live.get("team"),
+            sleeper_player_id=payload.sleeper_player_id,
+            slot=payload.slot,
         )
-    )
-    player = RosterPlayer(
-        team_id=team.id,
-        name=payload.name,
-        position=roster_import.normalize_position(payload.position) or resolved.position,
-        nfl_team=payload.nfl_team or resolved.nfl_team,
-        sleeper_player_id=resolved.sleeper_player_id,
-        slot=payload.slot,
-    )
+    else:
+        resolved = await roster_import.resolve_entry(
+            roster_import.ParsedRosterEntry(
+                name=payload.name, position=payload.position, nfl_team=payload.nfl_team
+            )
+        )
+        position = roster_import.normalize_position(payload.position) or resolved.position
+        _validate_slot(position, payload.slot)
+        player = RosterPlayer(
+            team_id=team.id,
+            name=payload.name,
+            position=position,
+            nfl_team=payload.nfl_team or resolved.nfl_team,
+            sleeper_player_id=resolved.sleeper_player_id,
+            slot=payload.slot,
+        )
+
     db.add(player)
     db.commit()
     db.refresh(player)
@@ -181,7 +220,7 @@ async def add_player(team_id: int, payload: PlayerCreate, db: Session = Depends(
 
 
 @router.patch("/{team_id}/players/{player_id}", response_model=PlayerOut)
-def update_player(
+async def update_player(
     team_id: int, player_id: int, payload: PlayerUpdate, db: Session = Depends(get_db)
 ):
     team = _get_team_or_404(db, team_id)
@@ -193,8 +232,19 @@ def update_player(
         player.position = roster_import.normalize_position(payload.position)
     if payload.nfl_team is not None:
         player.nfl_team = payload.nfl_team
-    if payload.slot is not None:
+    if "slot" in payload.model_fields_set:
+        _validate_slot(player.position, payload.slot)
         player.slot = payload.slot
+    if "sleeper_player_id" in payload.model_fields_set:
+        if payload.sleeper_player_id:
+            try:
+                await sleeper.get_player(payload.sleeper_player_id)
+            except SleeperNotFoundError:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Unknown sleeper_player_id '{payload.sleeper_player_id}'",
+                )
+        player.sleeper_player_id = payload.sleeper_player_id
 
     db.commit()
     db.refresh(player)
@@ -223,9 +273,40 @@ async def paste_roster(
     resolved = await roster_import.resolve_entries(parsed)
 
     if replace:
+        open_slots = list(team.starting_lineup_slots)
+        roster_import.assign_starting_slots(resolved, open_slots)
         team.players = _as_roster_players(resolved)
     else:
+        open_slots = list(team.starting_lineup_slots)
+        for existing in team.players:
+            if existing.slot and existing.slot in open_slots:
+                open_slots.remove(existing.slot)
+        roster_import.assign_starting_slots(resolved, open_slots)
         team.players.extend(_as_roster_players(resolved))
+
+    db.commit()
+    db.refresh(team)
+    return team
+
+
+@router.post("/{team_id}/apply-lineup", response_model=TeamOut)
+def apply_lineup(team_id: int, payload: ApplyLineupRequest, db: Session = Depends(get_db)):
+    """Bulk-applies slot assignments in one request - e.g. one-click "Set
+    Lineup" after reviewing an AI recommendation, instead of PATCHing each
+    player individually."""
+    team = _get_team_or_404(db, team_id)
+    players_by_id = {p.id: p for p in team.players}
+
+    for entry in payload.assignments:
+        player = players_by_id.get(entry.player_id)
+        if player is None:
+            raise HTTPException(
+                status_code=400, detail=f"Player {entry.player_id} not found on team {team_id}"
+            )
+        _validate_slot(player.position, entry.slot)
+
+    for entry in payload.assignments:
+        players_by_id[entry.player_id].slot = entry.slot
 
     db.commit()
     db.refresh(team)

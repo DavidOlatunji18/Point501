@@ -23,6 +23,7 @@ async def build_roster_players_context(team: Team) -> list[dict[str, Any]]:
                 "position": player.position,
                 "nfl_team": (live.get("team") if live else None) or player.nfl_team,
                 "slot": player.slot,
+                "sleeper_player_id": player.sleeper_player_id,
                 "injury_status": live.get("injury_status") if live else None,
                 "injury_notes": live.get("injury_notes") if live else None,
             }

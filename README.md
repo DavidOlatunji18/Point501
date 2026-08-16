@@ -6,7 +6,7 @@ natural-language fantasy questions through the Anthropic API.
 
 ## Status
 
-**Phase 5 (this commit): `/chat` and `/lineup` - the AI reasoning endpoints.**
+**Phase 6 (this commit): React frontend - Rosters, Chat, and Lineup pages.**
 
 Implemented:
 - Project structure (`app/core`, `app/db`, `app/models`, `app/schemas`,
@@ -64,9 +64,21 @@ Implemented:
   duplicate/hallucinated/omitted player_ids) before returning it. Defaults
   week/season/season_type from Sleeper's live NFL state when not specified.
 
-Not yet implemented: a frontend (React), Docker/CI/CD/Kubernetes/cloud
-deployment - deferred until the backend is fully working end-to-end, per
-plan.
+- `frontend/` - Vite + React + TypeScript + Tailwind app with three pages:
+  - **Rosters** - create a team (paste-as-text or Sleeper import), view/edit
+    the starting lineup slots, and add/edit/remove individual players
+  - **Chat** - a conversation UI against `/chat`, with a team selector
+    (or "General" for no roster context) and Markdown-rendered answers with
+    cited sources
+  - **Lineup** - pick a team (+ optional week/season override) and get the
+    full `/lineup` recommendation, grouped by slot with per-pick reasoning
+    and a bench list
+
+  Talks to the backend via `frontend/src/lib/api.ts` (typed fetch wrappers
+  mirroring `app/schemas/*.py`); CORS is enabled backend-side via
+  `FRONTEND_ORIGIN` (defaults to the Vite dev server at `localhost:5173`).
+
+Not yet implemented: Docker/CI/CD/Kubernetes/cloud deployment.
 
 ### Note: ESPN API is unofficial
 
@@ -93,6 +105,17 @@ uvicorn app.main:app --reload
 ```
 
 Then visit `http://127.0.0.1:8000/docs` for interactive API docs.
+
+Then, in a second terminal, start the frontend:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Visit `http://localhost:5173`. It expects the backend at `http://localhost:8000`
+by default - override with `VITE_API_BASE_URL` if needed.
 
 ## Try the Sleeper integration
 

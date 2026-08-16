@@ -181,6 +181,52 @@ async def search_players(query: str, limit: int = 25) -> list[dict[str, Any]]:
     return matches[:limit]
 
 
+async def search_players_by_last_name(
+    last_name: str, first_initial: str | None = None, limit: int = 25
+) -> list[dict[str, Any]]:
+    """Matches players by exact last name, optionally narrowed by first-name
+    initial - handles abbreviated names like "P. Mahomes" (common when
+    copying a roster from ESPN or a similar site), which the substring
+    search in search_players() won't match against a full display name."""
+    players = await get_all_players()
+    last_name_lower = last_name.lower()
+    matches = []
+    for player in players.values():
+        player_last = (player.get("last_name") or "").lower()
+        if player_last != last_name_lower:
+            continue
+        if first_initial:
+            player_first = player.get("first_name") or ""
+            if not player_first.lower().startswith(first_initial.lower()):
+                continue
+        matches.append(player)
+    matches.sort(key=lambda p: p["search_rank"] if p.get("search_rank") is not None else float("inf"))
+    return matches[:limit]
+
+
+async def get_season_stats(
+    player_id: str, season: int, season_type: Literal["regular", "post", "pre"] = "regular"
+) -> dict[str, Any]:
+    """Season-aggregate stats (points, per-position totals, position rank) for
+    a player. Lives outside the /v1 API the rest of this module uses, so it's
+    fetched by absolute URL rather than through the shared client's base_url.
+    Returns {} if unavailable (e.g. a rookie/backup with no games played, or
+    a team defense id, which this endpoint doesn't recognize) rather than
+    raising - callers treat missing stats as "nothing to report", not an error.
+    """
+    try:
+        response = await get_http_client().get(
+            f"https://api.sleeper.app/stats/nfl/player/{player_id}",
+            params={"season_type": season_type, "season": season},
+        )
+    except httpx.HTTPError:
+        return {}
+    if response.status_code != 200:
+        return {}
+    body = response.json()
+    return (body or {}).get("stats") or {}
+
+
 async def get_player(player_id: str) -> dict[str, Any]:
     players = await get_all_players()
     player = players.get(player_id)

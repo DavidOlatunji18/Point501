@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     nfl_season: str = "2025"
     database_url: str = "sqlite:///./fantasy_football.db"
     chroma_persist_dir: str = "./chroma_data"
+    frontend_origin: str = "http://localhost:5173"
 
 
 @lru_cache

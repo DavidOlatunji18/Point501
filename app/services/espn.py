@@ -127,7 +127,15 @@ async def get_week_schedule(
 
 
 async def get_bye_teams(week: int, season: int, season_type: SeasonType = 2) -> list[str]:
-    """Teams (Sleeper-style abbrs) with no game in the given week."""
+    """Teams (Sleeper-style abbrs) with no game in the given week.
+
+    Bye weeks are a regular-season-only concept: preseason "weeks" only
+    feature 1-2 games total (most teams simply aren't scheduled that week),
+    and postseason weeks shrink as teams get eliminated - treating either as
+    a bye would mislabel almost every team.
+    """
+    if season_type != 2:
+        return []
     teams, schedule = await asyncio.gather(
         get_teams(), get_week_schedule(week, season, season_type)
     )

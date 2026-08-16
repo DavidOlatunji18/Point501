@@ -10,6 +10,9 @@ class PlayerCreate(BaseModel):
     position: str | None = None
     nfl_team: str | None = None
     slot: str | None = None
+    # When provided (e.g. from an autocomplete selection), the player is
+    # looked up exactly by this ID instead of fuzzy-matched from `name`.
+    sleeper_player_id: str | None = None
 
 
 class PlayerUpdate(BaseModel):
@@ -17,6 +20,11 @@ class PlayerUpdate(BaseModel):
     position: str | None = None
     nfl_team: str | None = None
     slot: str | None = None
+    # Only touched when the key is present in the request body at all (see
+    # `model_fields_set` in the router) - lets a client explicitly re-link
+    # to a different player (a string ID) or unlink (null), while a request
+    # that omits this key entirely leaves the existing link untouched.
+    sleeper_player_id: str | None = None
 
 
 class PlayerOut(BaseModel):
@@ -70,3 +78,15 @@ class TeamOut(BaseModel):
 
 class RosterPasteRequest(BaseModel):
     roster_text: str
+
+
+class LineupAssignmentApply(BaseModel):
+    player_id: int
+    slot: str | None = None
+
+
+class ApplyLineupRequest(BaseModel):
+    """Bulk-applies a full set of slot assignments (e.g. from an AI lineup
+    recommendation) in one request instead of one PATCH per player."""
+
+    assignments: list[LineupAssignmentApply]

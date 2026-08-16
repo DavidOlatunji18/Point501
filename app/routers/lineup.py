@@ -30,9 +30,21 @@ async def get_lineup(
 
     if week is None or season is None or season_type is None:
         state = await sleeper.get_nfl_state()
-        week = week or state["week"]
-        season = season or int(state["season"])
-        season_type = season_type or sleeper.season_type_from_sleeper(state.get("season_type"))
+        resolved_season_type = (
+            season_type
+            if season_type is not None
+            else sleeper.season_type_from_sleeper(state.get("season_type"))
+        )
+        default_week = state["week"]
+        if season_type is None and resolved_season_type == 1:
+            # Preseason lineups aren't meaningful - almost no teams play each
+            # preseason "week", and bye weeks don't apply yet - so default
+            # forward to the upcoming regular season's week 1 instead.
+            resolved_season_type = 2
+            default_week = 1
+        season_type = resolved_season_type
+        week = week if week is not None else default_week
+        season = season if season is not None else int(state["season"])
 
     try:
         return await lineup_service.recommend_lineup(team, week, season, season_type)

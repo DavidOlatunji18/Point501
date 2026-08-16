@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+@theme {
+  /* Soft charcoal-black palette (Ravens black, lightened for readability) */
+  --color-canvas: #131316; /* page background */
+  --color-panel: #1c1c20; /* cards, header */
+  --color-panel-alt: #26262b; /* inputs, hover states, nested sections */
+  --color-outline: #38383f; /* borders */
+
+  /* Brand (official Ravens purple) */
+  --color-brand: #241773;
+  --color-brand-hover: #3a2694;
+
+  /* Secondary accent (official Ravens metallic gold) */
+  --color-gold: #9e7c0c;
+  --color-gold-hover: #b8930f;
+
+  /* Position/slot badge colors */
+  --color-pos-qb: #27bb36;
+  --color-pos-rb: #eab308;
+  --color-pos-wr: #ec4899;
+  --color-pos-te: #3b82f6;
+  --color-pos-flex: #f97316;
+  --color-pos-k: #a855f7;
+  --color-pos-dst: #b08968;
+}
+
+body {
+  margin: 0;
+  font-family: "Nunito", system-ui, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--color-canvas);
+}
+
+@keyframes gold-glow {
+  0%,
+  100% {
+    text-shadow: 0 0 10px rgba(158, 124, 12, 0.5);
+  }
+  50% {
+    text-shadow:
+      0 0 22px rgba(158, 124, 12, 0.9),
+      0 0 36px rgba(184, 147, 15, 0.55);
+  }
+}
+
+.animate-gold-glow {
+  animation: gold-glow 2.4s ease-in-out infinite;
+}

@@ -2,8 +2,10 @@ from contextlib import asynccontextmanager
 
 import anthropic
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.core.config import get_settings
 from app.db.session import Base, engine
 from app.models import article, team  # noqa: F401  (registers models on Base.metadata)
 from app.routers import articles, chat, espn, lineup, sleeper, teams
@@ -28,6 +30,13 @@ app = FastAPI(
     description="Sleeper-backed roster data, RAG over fantasy news, and Anthropic-powered Q&A.",
     version="0.1.0",
     lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[get_settings().frontend_origin],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(sleeper.router)
