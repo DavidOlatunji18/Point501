@@ -31,6 +31,18 @@ body {
   background-color: var(--color-canvas);
 }
 
+/* Browser autofill (e.g. a saved email) forces its own light background via
+ * a UA style that ignores normal background-color - this is the standard
+ * workaround, painting over it with an inset box-shadow instead. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  box-shadow: 0 0 0 1000px var(--color-panel-alt) inset;
+  -webkit-text-fill-color: var(--color-slate-100, #f1f5f9);
+  caret-color: #f1f5f9;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
 @keyframes gold-glow {
   0%,
   100% {
@@ -45,4 +57,38 @@ body {
 
 .animate-gold-glow {
   animation: gold-glow 2.4s ease-in-out infinite;
+}
+
+@keyframes float-glow {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(24px, -24px) scale(1.08);
+  }
+}
+
+.animate-float-glow {
+  animation: float-glow 11s ease-in-out infinite;
+}
+
+.animate-float-glow-delayed {
+  animation: float-glow 13s ease-in-out infinite;
+  animation-delay: -5s;
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-card-in {
+  animation: card-in 0.5s ease-out both;
 }

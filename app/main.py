@@ -1,6 +1,9 @@
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 import anthropic
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -11,15 +14,33 @@ from app.models import article, team  # noqa: F401  (registers models on Base.me
 from app.routers import articles, chat, espn, lineup, sleeper, teams
 from app.services import anthropic_client
 from app.services import espn as espn_service
+from app.services import news_feed
 from app.services import sleeper as sleeper_service
 from app.services.espn import EspnAPIError
 from app.services.sleeper import SleeperAPIError
+
+scheduler = AsyncIOScheduler()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+
+    settings = get_settings()
+    if settings.news_feed_enabled:
+        scheduler.add_job(
+            news_feed.fetch_and_ingest_feeds,
+            trigger=IntervalTrigger(days=settings.news_feed_interval_days),
+            id="fetch_news_feeds",
+            next_run_time=datetime.now(),  # also run once immediately on startup
+            replace_existing=True,
+        )
+        scheduler.start()
+
     yield
+
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
     await sleeper_service.close_http_client()
     await espn_service.close_http_client()
     await anthropic_client.close_client()

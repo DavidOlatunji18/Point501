@@ -2,6 +2,8 @@
 retrieve the most relevant chunks for a query - the retrieval half of RAG
 that /chat will build on."""
 
+import asyncio
+
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -10,6 +12,7 @@ from app.db.session import get_db
 from app.models.article import Article
 from app.schemas.article import ArticleCreate, ArticleOut, ArticleSearchResult
 from app.services import articles as articles_service
+from app.services import news_feed
 
 router = APIRouter(prefix="/articles", tags=["articles"])
 
@@ -54,6 +57,13 @@ async def upload_article(
         raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/fetch-feeds")
+async def fetch_feeds():
+    """Manually triggers an RSS ingestion run right now, instead of waiting
+    for the next scheduled one - useful for testing or an initial backfill."""
+    return await asyncio.to_thread(news_feed.fetch_and_ingest_feeds)
 
 
 @router.get("/search", response_model=list[ArticleSearchResult])

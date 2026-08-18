@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./fantasy_football.db"
     chroma_persist_dir: str = "./chroma_data"
     frontend_origin: str = "http://localhost:5173"
+    news_feed_enabled: bool = True
+    news_feed_interval_days: int = 2
 
 
 @lru_cache

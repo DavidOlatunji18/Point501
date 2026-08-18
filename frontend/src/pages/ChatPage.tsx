@@ -107,7 +107,7 @@ export default function ChatPage() {
             </div>
           </div>
         ))}
-        {sending && <p className="text-sm text-slate-400">Thinking…</p>}
+        {sending && <p className="text-sm text-slate-400">Cooking…</p>}
       </div>
 
       <form onSubmit={handleSubmit} className="mt-4 flex gap-2">

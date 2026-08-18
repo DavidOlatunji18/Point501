@@ -33,12 +33,22 @@ export default function Footer() {
           <span className="text-sm text-slate-500 sm:hidden">© {new Date().getFullYear()}</span>
         </div>
 
-        {/* Links to come once accounts exist */}
+        {/* Instagram link to come once there's an account for it */}
         <div className="flex items-center gap-4">
-          <a href="#" aria-label="LinkedIn" className="text-slate-400 hover:text-slate-100">
+          <a
+            href="https://www.linkedin.com/in/davidolatunji18"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="LinkedIn"
+            className="text-slate-400 hover:text-slate-100"
+          >
             <LinkedInIcon className="h-5 w-5" />
           </a>
-          <a href="#" aria-label="Email" className="text-slate-400 hover:text-slate-100">
+          <a
+            href="mailto:davidolatunjidev@gmail.com"
+            aria-label="Email"
+            className="text-slate-400 hover:text-slate-100"
+          >
             <Mail className="h-5 w-5" />
           </a>
           <a href="#" aria-label="Instagram" className="text-slate-400 hover:text-slate-100">

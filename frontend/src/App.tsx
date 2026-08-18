@@ -4,8 +4,12 @@ import { Menu, X } from "lucide-react";
 import { TeamsProvider } from "./context/TeamsContext";
 import { LineupProvider } from "./context/LineupContext";
 import { ChatProvider } from "./context/ChatContext";
+import { UserProvider } from "./context/UserContext";
 import Footer from "./components/Footer";
+import ProfileAvatar from "./components/ProfileAvatar";
 import LandingPage from "./pages/LandingPage";
+import LoginPage from "./pages/LoginPage";
+import SignupPage from "./pages/SignupPage";
 import RostersPage from "./pages/RostersPage";
 import ChatPage from "./pages/ChatPage";
 import LineupPage from "./pages/LineupPage";
@@ -52,8 +56,9 @@ function AppShell() {
             <img src="/Point501_logo_new_cropped.png" alt="Point501 logo" className="h-9 w-auto" />
             <span className="text-3xl font-extrabold tracking-tight text-gold">Point501</span>
           </div>
-          {/* Reserved for future Log in / Sign up buttons - keeps the logo grid-centered */}
-          <div className="hidden sm:block sm:justify-self-end" />
+          <div className="absolute right-4 sm:static sm:justify-self-end">
+            <ProfileAvatar />
+          </div>
         </div>
       </header>
 
@@ -70,6 +75,9 @@ function AppShell() {
             <div className="flex items-center gap-2">
               <img src="/Point501_logo_new_cropped.png" alt="Point501 logo" className="h-9 w-auto" />
               <span className="text-3xl font-extrabold tracking-tight text-gold">Point501</span>
+            </div>
+            <div className="absolute right-4">
+              <ProfileAvatar />
             </div>
           </div>
           <nav className="flex flex-1 flex-col items-center justify-center gap-10">
@@ -104,20 +112,24 @@ function AppShell() {
 
 function App() {
   return (
-    <TeamsProvider>
-      <LineupProvider>
-        <ChatProvider>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route element={<AppShell />}>
-              <Route path="/rosters" element={<RostersPage />} />
-              <Route path="/chat" element={<ChatPage />} />
-              <Route path="/lineup" element={<LineupPage />} />
-            </Route>
-          </Routes>
-        </ChatProvider>
-      </LineupProvider>
-    </TeamsProvider>
+    <UserProvider>
+      <TeamsProvider>
+        <LineupProvider>
+          <ChatProvider>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignupPage />} />
+              <Route element={<AppShell />}>
+                <Route path="/rosters" element={<RostersPage />} />
+                <Route path="/chat" element={<ChatPage />} />
+                <Route path="/lineup" element={<LineupPage />} />
+              </Route>
+            </Routes>
+          </ChatProvider>
+        </LineupProvider>
+      </TeamsProvider>
+    </UserProvider>
   );
 }
 

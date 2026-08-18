@@ -26,6 +26,10 @@ _POSITION_ALIASES = {"DEF": "DST"}
 # Lineup-slot labels, not real positions - people often paste these
 # alongside a player's actual position (e.g. "FLEX Christian McCaffrey").
 _SLOT_ONLY_TOKENS = {"FLEX"}
+# Bench markers some sources (e.g. ESPN's "BE") export alongside a player -
+# not a starting slot at all, so these never become entry.slot; they're only
+# used to recognize where one bench player ends and the next begins.
+_BENCH_MARKER_TOKENS = {"BE", "BN"}
 
 _LEADING_MARKER_RE = re.compile(r"^\s*(?:[-*•]|\d+[.)])\s*")
 _TOKEN_SPLIT_RE = re.compile(r"[\s,()/]+")
@@ -62,6 +66,11 @@ class ParsedRosterEntry:
     nfl_team: str | None = None
     slot: str | None = None
     sleeper_player_id: str | None = None
+    # Explicitly marked bench in the pasted text (e.g. a "BE"/"BN" token) -
+    # kept separate from `slot` (which only ever holds a real starting slot)
+    # so assign_starting_slots knows never to auto-promote this entry, even
+    # if its position would otherwise fit an open slot.
+    bench: bool = False
 
 
 @dataclass
@@ -72,12 +81,88 @@ class SleeperRosterImport:
     players: list[ParsedRosterEntry]
 
 
+_MARKER_TOKENS = _POSITION_TOKENS | _SLOT_ONLY_TOKENS | _BENCH_MARKER_TOKENS
+
+
+def _parse_line_tokens(tokens: list[str]) -> list[ParsedRosterEntry]:
+    """Parses the tokens of a single line, which may actually contain more
+    than one player pasted back-to-back without line breaks (e.g. "QB L.
+    Jackson RB D. Swift WR A. Brown", or "K A. Borregales BE P. Mahomes BE
+    J. Dart"). A position/slot/bench marker is treated as the start of a new
+    player once the entry in progress already has a name - but a *repeated*
+    marker with nothing new after it but team info (e.g. "WR Justin
+    Jefferson, WR, MIN") is a harmless redundant mention, not a new player.
+    """
+    entries: list[ParsedRosterEntry] = []
+    position: str | None = None
+    nfl_team: str | None = None
+    slot: str | None = None
+    bench = False
+    name_tokens: list[str] = []
+
+    def flush() -> None:
+        nonlocal position, nfl_team, slot, bench, name_tokens
+        tokens_for_name = name_tokens
+        if not tokens_for_name and nfl_team:
+            # A bare defense line like "SF DST" consumes both tokens as
+            # team + position, leaving nothing for the name - fall back to
+            # the team code itself so the entry isn't silently dropped.
+            tokens_for_name = [nfl_team]
+        name = " ".join(tokens_for_name).strip(" -,")
+        if name:
+            entries.append(
+                ParsedRosterEntry(
+                    name=name, position=position, nfl_team=nfl_team, slot=slot, bench=bench
+                )
+            )
+        position, nfl_team, slot, bench, name_tokens = None, None, None, False, []
+
+    def starts_new_player(next_index: int) -> bool:
+        """True if a real name token (not just a team abbreviation) appears
+        before the next marker or the end of the line - distinguishes "a new
+        player follows" from a marker just trailing the current one."""
+        for t in tokens[next_index:]:
+            u = t.upper()
+            if u in _MARKER_TOKENS:
+                return False
+            if u in NFL_TEAM_ABBREVIATIONS:
+                continue
+            return True
+        return False
+
+    for i, token in enumerate(tokens):
+        upper = token.upper()
+        if upper in _MARKER_TOKENS:
+            # Any marker (position, FLEX, or bench) while the entry in
+            # progress already has *some* marker set and a name - if real
+            # content follows, this is a new player, not more of this one.
+            entry_in_progress = position is not None or slot is not None or bench
+            if entry_in_progress and name_tokens and starts_new_player(i + 1):
+                flush()
+            if upper in _BENCH_MARKER_TOKENS:
+                bench = True
+            elif upper in _SLOT_ONLY_TOKENS:
+                slot = upper
+            else:
+                position = _POSITION_ALIASES.get(upper, upper)
+            continue
+        if upper in NFL_TEAM_ABBREVIATIONS:
+            if nfl_team is None:
+                nfl_team = upper
+            continue
+        name_tokens.append(token)
+
+    flush()
+    return entries
+
+
 def parse_roster_text(text: str) -> list[ParsedRosterEntry]:
-    """Best-effort line-by-line parse of a pasted roster.
+    """Best-effort parse of a pasted roster.
 
     Handles lines like "QB Patrick Mahomes", "Patrick Mahomes - QB - KC",
     "Patrick Mahomes, QB, KC", "FLEX Christian McCaffrey", a bare team
-    defense ("SF DST"), or a bare "Patrick Mahomes". Position/team/slot
+    defense ("SF DST"), a bare "Patrick Mahomes", or multiple players
+    pasted on one line without breaks between them. Position/team/slot
     tokens are recognized anywhere in the line; whatever's left is the name.
     """
     entries = []
@@ -85,44 +170,8 @@ def parse_roster_text(text: str) -> list[ParsedRosterEntry]:
         line = _LEADING_MARKER_RE.sub("", raw_line).strip(" -")
         if not line:
             continue
-
         tokens = [t for t in _TOKEN_SPLIT_RE.split(line) if t]
-        position: str | None = None
-        nfl_team: str | None = None
-        slot: str | None = None
-        name_tokens: list[str] = []
-
-        for token in tokens:
-            upper = token.upper()
-            if upper in _SLOT_ONLY_TOKENS:
-                if slot is None:
-                    slot = upper
-                continue
-            if upper in _POSITION_TOKENS:
-                # Keep the first match as authoritative but always drop the
-                # token from the name, in case a line mentions it twice
-                # (e.g. "WR Justin Jefferson, WR, MIN").
-                if position is None:
-                    position = _POSITION_ALIASES.get(upper, upper)
-                continue
-            if upper in NFL_TEAM_ABBREVIATIONS:
-                if nfl_team is None:
-                    nfl_team = upper
-                continue
-            name_tokens.append(token)
-
-        if not name_tokens and nfl_team:
-            # A bare defense line like "SF DST" consumes both tokens as
-            # team + position, leaving nothing for the name - fall back to
-            # the team code itself so the entry isn't silently dropped.
-            name_tokens = [nfl_team]
-
-        name = " ".join(name_tokens).strip(" -,")
-        if not name:
-            continue
-        entries.append(
-            ParsedRosterEntry(name=name, position=position, nfl_team=nfl_team, slot=slot)
-        )
+        entries.extend(_parse_line_tokens(tokens))
 
     return entries
 
@@ -139,9 +188,10 @@ def assign_starting_slots(
     remaining_slots = list(open_slots)
     unassigned = list(entries)
 
-    # Pass 1: exact position matches, skipping entries already explicitly slotted.
+    # Pass 1: exact position matches, skipping entries already explicitly
+    # slotted or explicitly benched (e.g. a "BE" marker in the paste).
     for entry in entries:
-        if entry.slot:
+        if entry.slot or entry.bench:
             continue
         if entry.position and entry.position in remaining_slots:
             remaining_slots.remove(entry.position)
@@ -158,8 +208,12 @@ def assign_starting_slots(
             if entry in unassigned:
                 unassigned.remove(entry)
 
-    # Pass 3: leftover FLEX-eligible entries fill remaining FLEX slots, in order.
+    # Pass 3: leftover FLEX-eligible entries fill remaining FLEX slots, in
+    # order - skipping explicitly benched entries, which should never be
+    # auto-promoted into a starting slot regardless of position.
     for entry in list(unassigned):
+        if entry.bench:
+            continue
         if "FLEX" not in remaining_slots:
             break
         if entry.position in FLEX_ELIGIBLE_POSITIONS:
@@ -190,6 +244,7 @@ async def resolve_entry(entry: ParsedRosterEntry) -> ParsedRosterEntry:
                     nfl_team=player.get("team") or team_code,
                     slot=entry.slot,
                     sleeper_player_id=player.get("player_id"),
+                    bench=entry.bench,
                 )
 
     # Try the "P. Mahomes" abbreviated-name pattern first, when it applies -
@@ -217,6 +272,7 @@ async def resolve_entry(entry: ParsedRosterEntry) -> ParsedRosterEntry:
             nfl_team=entry.nfl_team,
             slot=entry.slot,
             sleeper_player_id=entry.sleeper_player_id,
+            bench=entry.bench,
         )
 
     if position:
@@ -231,6 +287,7 @@ async def resolve_entry(entry: ParsedRosterEntry) -> ParsedRosterEntry:
         nfl_team=entry.nfl_team or best.get("team"),
         slot=entry.slot,
         sleeper_player_id=best.get("player_id"),
+        bench=entry.bench,
     )
 
 

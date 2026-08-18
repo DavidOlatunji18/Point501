@@ -31,16 +31,15 @@ export default function LandingPage() {
             <img src="/Point501_logo_new_cropped.png" alt="Point501 logo" className="h-9 w-auto" />
             <span className="text-3xl font-extrabold tracking-tight text-gold">Point501</span>
           </div>
-          {/* Placeholder until real auth exists - currently just enters the app */}
           <div className="hidden items-center justify-end gap-6 sm:flex sm:justify-self-end">
             <Link
-              to="/rosters"
+              to="/login"
               className="flex items-center gap-1.5 text-sm font-bold tracking-wide text-slate-100 uppercase transition-colors hover:text-violet-400"
             >
               Log in <span aria-hidden="true">→</span>
             </Link>
             <Link
-              to="/rosters"
+              to="/signup"
               className="flex items-center gap-1.5 rounded-full bg-gold px-6 py-2.5 text-sm font-bold tracking-wide text-black uppercase hover:bg-gold-hover"
             >
               Sign up <span aria-hidden="true">→</span>
@@ -66,16 +65,16 @@ export default function LandingPage() {
           </div>
           <div className="flex flex-1 flex-col items-center justify-center gap-8">
             <Link
-              to="/rosters"
+              to="/login"
               onClick={() => setMenuOpen(false)}
-              className="flex items-center gap-2 text-2xl font-bold tracking-wide text-slate-100 uppercase transition-colors hover:text-violet-400"
+              className="flex items-center gap-2 text-lg font-bold tracking-wide text-slate-100 uppercase transition-colors hover:text-violet-400"
             >
               Log in <span aria-hidden="true">→</span>
             </Link>
             <Link
-              to="/rosters"
+              to="/signup"
               onClick={() => setMenuOpen(false)}
-              className="flex items-center gap-2 rounded-full bg-gold px-8 py-3.5 text-2xl font-bold tracking-wide text-black uppercase hover:bg-gold-hover"
+              className="flex items-center gap-2 rounded-full bg-gold px-6 py-2.5 text-lg font-bold tracking-wide text-black uppercase hover:bg-gold-hover"
             >
               Sign up <span aria-hidden="true">→</span>
             </Link>
@@ -95,7 +94,7 @@ export default function LandingPage() {
         </p>
 
         <Link
-          to="/rosters"
+          to="/signup"
           className="mt-10 rounded-full bg-brand px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-brand/30 hover:bg-brand-hover"
         >
           Get started →
