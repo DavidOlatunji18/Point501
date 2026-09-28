@@ -107,11 +107,16 @@ jobs:
 
       - name: Create an ephemeral kind cluster
         uses: helm/kind-action@v1
+        with:
+          # The action's own default cluster name is "chart-testing", not
+          # "kind" - naming it explicitly here keeps it consistent with the
+          # plain `kind` CLI commands below, which assume the default name.
+          cluster_name: kind
 
       - name: Load images into kind
         run: |
-          kind load docker-image point501-backend:local
-          kind load docker-image point501-frontend:local
+          kind load docker-image point501-backend:local --name kind
+          kind load docker-image point501-frontend:local --name kind
 
       - name: Generate k8s secrets for this run (placeholder values, never committed)
         run: |
