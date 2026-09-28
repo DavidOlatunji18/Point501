@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: point501
+data:
+  SLEEPER_API_BASE_URL: "https://api.sleeper.app/v1"
+  NFL_SEASON: "2025"
+  CHROMA_PERSIST_DIR: "/app/chroma_data"
+  # Adjust to whatever origin the browser actually uses to reach the
+  # frontend through your ingress (e.g. the port kind maps to 80/443).
+  FRONTEND_ORIGIN: "http://localhost"
+  NEWS_FEED_ENABLED: "true"
+  NEWS_FEED_INTERVAL_DAYS: "2"

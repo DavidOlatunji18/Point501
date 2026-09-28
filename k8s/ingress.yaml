@@ -1,0 +1,30 @@
+# Routes / to the frontend and /api/* to the backend (stripping the /api
+# prefix, since the backend's own routes don't expect it - the frontend is
+# built with VITE_API_BASE_URL=/api for this deployment path).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: point501-ingress
+  namespace: point501
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /api(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 8000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80

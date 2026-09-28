@@ -9,3 +9,8 @@ chroma_data/
 .DS_Store
 .pytest_cache/
 *.egg-info/
+
+# Real k8s secrets - never commit these. Copy the .example.yaml templates
+# and fill in real values, or create them directly with `kubectl create secret`.
+k8s/*-secret.yaml
+!k8s/*-secret.example.yaml

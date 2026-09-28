@@ -1,0 +1,140 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements-dev.txt
+      - run: pytest -q
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  build-and-push-images:
+    if: github.event_name == 'push'
+    needs: [backend-tests, frontend-build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_base: ${{ steps.image-base.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute lowercase image base (GHCR requires it)
+        id: image-base
+        run: echo "value=${REGISTRY}/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.image-base.outputs.value }}-backend:${{ github.sha }}
+            ${{ steps.image-base.outputs.value }}-backend:latest
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          build-args: |
+            VITE_API_BASE_URL=/api
+          tags: |
+            ${{ steps.image-base.outputs.value }}-frontend:${{ github.sha }}
+            ${{ steps.image-base.outputs.value }}-frontend:latest
+
+  deploy-and-verify:
+    if: github.event_name == 'push'
+    needs: [build-and-push-images]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull just-pushed images and retag for the local cluster
+        env:
+          IMAGE_BASE: ${{ needs.build-and-push-images.outputs.image_base }}
+        run: |
+          docker pull "${IMAGE_BASE}-backend:${{ github.sha }}"
+          docker pull "${IMAGE_BASE}-frontend:${{ github.sha }}"
+          docker tag "${IMAGE_BASE}-backend:${{ github.sha }}" point501-backend:local
+          docker tag "${IMAGE_BASE}-frontend:${{ github.sha }}" point501-frontend:local
+
+      - name: Create an ephemeral kind cluster
+        uses: helm/kind-action@v1
+
+      - name: Load images into kind
+        run: |
+          kind load docker-image point501-backend:local
+          kind load docker-image point501-frontend:local
+
+      - name: Generate k8s secrets for this run (placeholder values, never committed)
+        run: |
+          cp k8s/db-secret.example.yaml k8s/db-secret.yaml
+          sed 's/REPLACE_ME/ci-placeholder-not-a-real-key/' k8s/anthropic-secret.example.yaml > k8s/anthropic-secret.yaml
+
+      - name: Apply manifests
+        run: kubectl apply -k k8s/
+
+      - name: Wait for pods to be ready
+        run: |
+          kubectl wait --for=condition=available --timeout=180s deployment/postgres -n point501
+          kubectl wait --for=condition=available --timeout=180s deployment/backend -n point501
+          kubectl wait --for=condition=available --timeout=180s deployment/frontend -n point501
+
+      - name: Smoke-test the backend through its Service
+        run: |
+          kubectl port-forward -n point501 svc/backend 8000:8000 &
+          sleep 3
+          curl -sf http://localhost:8000/health
+
+      - name: Smoke-test the frontend through its Service
+        run: |
+          kubectl port-forward -n point501 svc/frontend 8080:80 &
+          sleep 3
+          curl -sf http://localhost:8080/ | grep -qi "<!doctype html>"

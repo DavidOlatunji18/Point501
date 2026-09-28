@@ -8,6 +8,7 @@ class Settings(BaseSettings):
 
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-opus-5"
+    anthropic_fast_model: str = "claude-sonnet-5"
     sleeper_api_base_url: str = "https://api.sleeper.app/v1"
     nfl_season: str = "2025"
     database_url: str = "sqlite:///./fantasy_football.db"

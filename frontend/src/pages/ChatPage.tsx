@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import { useTeams } from "../context/TeamsContext";
 import { useChat } from "../context/ChatContext";
@@ -24,6 +24,30 @@ export default function ChatPage() {
   const { messages, setMessages } = useChat();
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    requestAnimationFrame(() => {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    });
+  }, [messages, sending]);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  }, [input]);
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      e.currentTarget.form?.requestSubmit();
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -71,7 +95,10 @@ export default function ChatPage() {
         </div>
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto rounded-lg border border-outline bg-panel p-4">
+      <div
+        ref={containerRef}
+        className="flex-1 space-y-4 overflow-y-auto rounded-lg border border-outline bg-panel p-4"
+      >
         {messages.length === 0 && (
           <p className="text-sm text-slate-400">
             Ask about start/sit decisions, waivers, trades, or general strategy. If a team is
@@ -94,28 +121,21 @@ export default function ChatPage() {
               ) : (
                 msg.content
               )}
-              {msg.sources && msg.sources.length > 0 && (
-                <div className="mt-2 border-t border-outline pt-2 text-xs text-slate-400">
-                  <p className="font-medium">Sources:</p>
-                  <ul className="list-inside list-disc">
-                    {msg.sources.map((s, j) => (
-                      <li key={j}>{s.title}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
           </div>
         ))}
         {sending && <p className="text-sm text-slate-400">Cooking…</p>}
       </div>
 
-      <form onSubmit={handleSubmit} className="mt-4 flex gap-2">
-        <input
+      <form onSubmit={handleSubmit} className="mt-4 flex items-end gap-2">
+        <textarea
+          ref={textareaRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="Should I start X or Y this week?"
-          className="flex-1 rounded-md border border-outline bg-panel-alt px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-gold focus:outline-none"
+          rows={1}
+          className="max-h-40 flex-1 resize-none overflow-y-auto rounded-md border border-outline bg-panel-alt px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-gold focus:outline-none"
         />
         <button
           type="submit"
