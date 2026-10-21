@@ -17,7 +17,7 @@ export default function PasswordInput({ value, onChange, required }: PasswordInp
         required={required}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-md border border-outline bg-panel-alt px-3 py-2 pr-10 text-sm text-slate-100 focus:border-gold focus:outline-none"
+        className="w-full rounded-md border border-outline bg-panel-alt px-3 py-2 pr-10 text-base text-slate-100 focus:border-gold focus:outline-none"
       />
       <button
         type="button"

@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.models.team import Team
 from app.services import context, sleeper
 from app.services.anthropic_client import get_client
+from app.services.roster_import import FLEX_ELIGIBLE_POSITIONS
 
 MAX_TOKENS = 8192
 
@@ -127,6 +128,13 @@ class LineupGenerationError(Exception):
     """Raised when the model doesn't return a usable lineup (e.g. a refusal)."""
 
 
+def _validate_flex_eligibility(slot: str, position: str | None, player_name: str) -> None:
+    if slot == "FLEX" and position not in FLEX_ELIGIBLE_POSITIONS:
+        raise LineupGenerationError(
+            f"Model assigned {player_name} ({position}) to FLEX, which only accepts RB/WR/TE"
+        )
+
+
 def _format_roster_for_prompt(
     roster_context: list[dict[str, Any]],
     schedule: dict[str, Any],
@@ -176,7 +184,8 @@ async def recommend_lineup(
         "statistical performance/volume (cite specific numbers from the stats "
         "given, don't just gesture at them vaguely). Every non-empty slot must "
         "be filled with a player from the roster; a player can only fill one "
-        "slot. Any roster player not assigned to a slot goes on the bench - "
+        "slot. FLEX may only be filled by an RB, WR, or TE - never a QB, K, "
+        "or DST. Any roster player not assigned to a slot goes on the bench - "
         "give each benched player their own specific reasoning too (why the "
         "starter(s) at their position are a better play this week, e.g. worse "
         "matchup, lower volume/target share, injury concern, buried on the "
@@ -222,6 +231,7 @@ async def recommend_lineup(
         player = players_by_id.get(player_id)
         if player is None:
             raise LineupGenerationError(f"Model referenced unknown player_id {player_id}")
+        _validate_flex_eligibility(assignment["slot"], player["position"], player["name"])
         seen_ids.add(player_id)
         lineup.append(
             {

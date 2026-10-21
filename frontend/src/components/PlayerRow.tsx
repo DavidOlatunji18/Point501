@@ -111,23 +111,23 @@ export default function PlayerRow({ teamId, player, onChanged, availableSlots }:
             onChange={handleNameChange}
             onSelectPlayer={handleSelectPlayer}
             placeholder="Name"
-            className="w-40 rounded border border-outline bg-panel-alt px-2 py-1 text-sm text-slate-100"
+            className="w-40 rounded border border-outline bg-panel-alt px-2 py-1 text-base text-slate-100"
           />
         </div>
         <input
-          className="w-20 rounded border border-outline bg-panel-alt px-2 py-1 text-sm text-slate-100"
+          className="w-20 rounded border border-outline bg-panel-alt px-2 py-1 text-base text-slate-100"
           value={position}
           onChange={(e) => setPosition(e.target.value.toUpperCase())}
           placeholder="Pos"
         />
         <input
-          className="w-20 rounded border border-outline bg-panel-alt px-2 py-1 text-sm text-slate-100"
+          className="w-20 rounded border border-outline bg-panel-alt px-2 py-1 text-base text-slate-100"
           value={nflTeam}
           onChange={(e) => setNflTeam(e.target.value.toUpperCase())}
           placeholder="Team"
         />
         <input
-          className="w-20 rounded border border-outline bg-panel-alt px-2 py-1 text-sm text-slate-100"
+          className="w-20 rounded border border-outline bg-panel-alt px-2 py-1 text-base text-slate-100"
           value={slot}
           onChange={(e) => setSlot(e.target.value.toUpperCase())}
           placeholder="Slot"

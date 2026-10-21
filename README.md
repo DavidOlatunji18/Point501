@@ -19,7 +19,47 @@ model's general knowledge.
 
 ## Screenshots
 
-*(Coming soon)*
+<table>
+<tr>
+<td align="center" width="33%">
+<img src="docs/screenshots/landing.jpg" width="260"><br>
+<b>Landing page</b>
+</td>
+<td align="center" width="33%">
+<img src="docs/screenshots/signup.jpg" width="260"><br>
+<b>Sign up</b>
+</td>
+<td align="center" width="33%">
+<img src="docs/screenshots/login.jpg" width="260"><br>
+<b>Log in</b>
+</td>
+</tr>
+<tr>
+<td align="center">
+<img src="docs/screenshots/rosters.jpg" width="260"><br>
+<b>Rosters overview</b>
+</td>
+<td align="center">
+<img src="docs/screenshots/roster-detail.jpg" width="260"><br>
+<b>Roster detail (starters &amp; bench)</b>
+</td>
+<td align="center">
+<img src="docs/screenshots/mobile-nav.jpg" width="260"><br>
+<b>Mobile navigation</b>
+</td>
+</tr>
+<tr>
+<td align="center">
+<img src="docs/screenshots/lineup.jpg" width="260"><br>
+<b>AI lineup builder</b>
+</td>
+<td align="center">
+<img src="docs/screenshots/chat.jpg" width="260"><br>
+<b>AI chat Q&amp;A</b>
+</td>
+<td></td>
+</tr>
+</table>
 
 ## Features
 

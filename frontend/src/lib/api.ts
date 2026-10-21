@@ -126,10 +126,9 @@ export interface ChatSource {
   source: string;
 }
 
-export interface ChatResponse {
-  answer: string;
-  sources: ChatSource[];
-}
+export type ChatStreamEvent =
+  | { type: "token"; text: string }
+  | { type: "done"; sources: ChatSource[] };
 
 export interface LineupAssignment {
   slot: string;
@@ -157,6 +156,48 @@ export interface LineupResponse {
   summary: string;
   lineup: LineupAssignment[];
   bench: BenchPlayer[];
+}
+
+// Reads the SSE stream from POST /chat, yielding each event as it arrives
+// instead of waiting for the full response - the model can take several
+// seconds just to write out the final answer, so this lets the UI show it
+// building in real time instead of a long blank wait.
+async function* streamChat(message: string, teamId?: number): AsyncGenerator<ChatStreamEvent> {
+  const response = await fetch(`${API_BASE_URL}/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, team_id: teamId ?? null }),
+  });
+
+  if (!response.ok || !response.body) {
+    let detail = response.statusText;
+    try {
+      const body = await response.json();
+      detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
+    } catch {
+      // response body wasn't JSON - fall back to statusText
+    }
+    throw new ApiError(response.status, detail);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let sepIndex;
+    while ((sepIndex = buffer.indexOf("\n\n")) !== -1) {
+      const rawEvent = buffer.slice(0, sepIndex);
+      buffer = buffer.slice(sepIndex + 2);
+      const dataLine = rawEvent.split("\n").find((line) => line.startsWith("data: "));
+      if (!dataLine) continue;
+      yield JSON.parse(dataLine.slice("data: ".length)) as ChatStreamEvent;
+    }
+  }
 }
 
 // ---- API ----
@@ -198,11 +239,7 @@ export const api = {
       body: JSON.stringify({ assignments }),
     }),
 
-  chat: (message: string, teamId?: number) =>
-    request<ChatResponse>("/chat", {
-      method: "POST",
-      body: JSON.stringify({ message, team_id: teamId ?? null }),
-    }),
+  streamChat,
 
   getLineup: (teamId: number, week?: number, season?: number, seasonType?: number) => {
     const params = new URLSearchParams({ team_id: String(teamId) });

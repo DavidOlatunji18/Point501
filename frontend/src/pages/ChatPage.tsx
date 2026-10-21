@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import { useTeams } from "../context/TeamsContext";
-import { useChat } from "../context/ChatContext";
+import { useChat, type ChatMessage } from "../context/ChatContext";
 import { api } from "../lib/api";
 import TeamSelector from "../components/TeamSelector";
 
@@ -24,6 +24,7 @@ export default function ChatPage() {
   const { messages, setMessages } = useChat();
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [awaitingFirstToken, setAwaitingFirstToken] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -57,13 +58,36 @@ export default function ChatPage() {
     setMessages((prev) => [...prev, { role: "user", content: message }]);
     setInput("");
     setSending(true);
+    setAwaitingFirstToken(true);
 
+    function updateLastMessage(update: (msg: ChatMessage) => ChatMessage) {
+      setMessages((prev) => {
+        const next = [...prev];
+        next[next.length - 1] = update(next[next.length - 1]);
+        return next;
+      });
+    }
+
+    let started = false;
     try {
-      const response = await api.chat(message, selectedTeamId ?? undefined);
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: response.answer, sources: response.sources },
-      ]);
+      for await (const event of api.streamChat(message, selectedTeamId ?? undefined)) {
+        setAwaitingFirstToken(false);
+        if (event.type === "token") {
+          if (!started) {
+            started = true;
+            setMessages((prev) => [...prev, { role: "assistant", content: event.text }]);
+          } else {
+            updateLastMessage((msg) => ({ ...msg, content: msg.content + event.text }));
+          }
+        } else {
+          if (!started) {
+            started = true;
+            setMessages((prev) => [...prev, { role: "assistant", content: "", sources: event.sources }]);
+          } else {
+            updateLastMessage((msg) => ({ ...msg, sources: event.sources }));
+          }
+        }
+      }
     } catch (err) {
       setMessages((prev) => [
         ...prev,
@@ -74,6 +98,7 @@ export default function ChatPage() {
         },
       ]);
     } finally {
+      setAwaitingFirstToken(false);
       setSending(false);
     }
   }
@@ -124,7 +149,7 @@ export default function ChatPage() {
             </div>
           </div>
         ))}
-        {sending && <p className="text-sm text-slate-400">Cooking…</p>}
+        {awaitingFirstToken && <p className="text-sm text-slate-400">Cooking…</p>}
       </div>
 
       <form onSubmit={handleSubmit} className="mt-4 flex items-end gap-2">
@@ -135,7 +160,7 @@ export default function ChatPage() {
           onKeyDown={handleKeyDown}
           placeholder="Should I start X or Y this week?"
           rows={1}
-          className="max-h-40 flex-1 resize-none overflow-y-auto rounded-md border border-outline bg-panel-alt px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-gold focus:outline-none"
+          className="max-h-40 flex-1 resize-none overflow-y-auto rounded-md border border-outline bg-panel-alt px-3 py-2 text-base text-slate-100 placeholder:text-slate-500 focus:border-gold focus:outline-none"
         />
         <button
           type="submit"

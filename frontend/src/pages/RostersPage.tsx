@@ -244,7 +244,7 @@ function CreateTeamForm({
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="mt-1 w-full rounded-md border border-outline bg-panel-alt px-3 py-2 text-sm text-slate-100"
+              className="mt-1 w-full rounded-md border border-outline bg-panel-alt px-3 py-2 text-base text-slate-100"
             />
           </div>
           <div>
@@ -256,7 +256,7 @@ function CreateTeamForm({
               onChange={(e) => setRosterText(e.target.value)}
               rows={5}
               placeholder={"QB Patrick Mahomes\nRB Christian McCaffrey\nSF DST"}
-              className="mt-1 w-full rounded-md border border-outline bg-panel-alt px-3 py-2 text-sm font-mono text-slate-100 placeholder:text-slate-500"
+              className="mt-1 w-full rounded-md border border-outline bg-panel-alt px-3 py-2 text-base font-mono text-slate-100 placeholder:text-slate-500"
             />
           </div>
           <div>
@@ -266,7 +266,7 @@ function CreateTeamForm({
             <input
               value={slots}
               onChange={(e) => setSlots(e.target.value)}
-              className="mt-1 w-full rounded-md border border-outline bg-panel-alt px-3 py-2 text-sm text-slate-100"
+              className="mt-1 w-full rounded-md border border-outline bg-panel-alt px-3 py-2 text-base text-slate-100"
             />
             <p className="mt-1 text-xs text-slate-500">Comma-separated.</p>
           </div>
@@ -280,7 +280,7 @@ function CreateTeamForm({
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="mt-1 w-full rounded-md border border-outline bg-panel-alt px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
+              className="mt-1 w-full rounded-md border border-outline bg-panel-alt px-3 py-2 text-base text-slate-100 placeholder:text-slate-500"
               placeholder="Defaults to your Sleeper team name"
             />
           </div>
@@ -290,7 +290,7 @@ function CreateTeamForm({
               required
               value={sleeperUsername}
               onChange={(e) => setSleeperUsername(e.target.value)}
-              className="mt-1 w-full rounded-md border border-outline bg-panel-alt px-3 py-2 text-sm text-slate-100"
+              className="mt-1 w-full rounded-md border border-outline bg-panel-alt px-3 py-2 text-base text-slate-100"
             />
           </div>
           <div>
@@ -299,7 +299,7 @@ function CreateTeamForm({
               required
               value={sleeperLeagueId}
               onChange={(e) => setSleeperLeagueId(e.target.value)}
-              className="mt-1 w-full rounded-md border border-outline bg-panel-alt px-3 py-2 text-sm text-slate-100"
+              className="mt-1 w-full rounded-md border border-outline bg-panel-alt px-3 py-2 text-base text-slate-100"
             />
           </div>
         </>
@@ -647,7 +647,7 @@ function AddPlayerForm({ teamId, onAdded }: { teamId: number; onAdded: () => voi
           onChange={handleNameChange}
           onSelectPlayer={handleSelectPlayer}
           placeholder="Start typing a player name…"
-          className="w-52 rounded border border-outline bg-panel px-2 py-1 text-sm text-slate-100"
+          className="w-52 rounded border border-outline bg-panel px-2 py-1 text-base text-slate-100"
         />
       </div>
       <div>
@@ -655,7 +655,7 @@ function AddPlayerForm({ teamId, onAdded }: { teamId: number; onAdded: () => voi
         <input
           value={position}
           onChange={(e) => setPosition(e.target.value.toUpperCase())}
-          className="w-20 rounded border border-outline bg-panel px-2 py-1 text-sm text-slate-100"
+          className="w-20 rounded border border-outline bg-panel px-2 py-1 text-base text-slate-100"
         />
       </div>
       <div>
@@ -663,7 +663,7 @@ function AddPlayerForm({ teamId, onAdded }: { teamId: number; onAdded: () => voi
         <input
           value={nflTeam}
           onChange={(e) => setNflTeam(e.target.value.toUpperCase())}
-          className="w-20 rounded border border-outline bg-panel px-2 py-1 text-sm text-slate-100"
+          className="w-20 rounded border border-outline bg-panel px-2 py-1 text-base text-slate-100"
         />
       </div>
       <button
@@ -706,7 +706,7 @@ function PasteMoreForm({ teamId, onAdded }: { teamId: number; onAdded: () => voi
         onChange={(e) => setText(e.target.value)}
         rows={4}
         placeholder={"WR Tyreek Hill\nK Justin Tucker"}
-        className="w-full rounded border border-outline bg-panel px-2 py-1.5 text-sm font-mono text-slate-100 placeholder:text-slate-500"
+        className="w-full rounded border border-outline bg-panel px-2 py-1.5 text-base font-mono text-slate-100 placeholder:text-slate-500"
       />
       <div className="flex items-center gap-3">
         <label className="flex items-center gap-1.5 text-sm text-slate-400">

@@ -124,13 +124,13 @@ export default function LineupPage() {
             value={week}
             onChange={(e) => setWeek(e.target.value)}
             placeholder="Week (auto)"
-            className="w-28 rounded-md border border-outline bg-panel-alt px-3 py-1.5 text-sm text-slate-100 placeholder:text-slate-500"
+            className="w-28 rounded-md border border-outline bg-panel-alt px-3 py-1.5 text-base text-slate-100 placeholder:text-slate-500"
           />
           <input
             value={season}
             onChange={(e) => setSeason(e.target.value)}
             placeholder="Season (auto)"
-            className="w-32 rounded-md border border-outline bg-panel-alt px-3 py-1.5 text-sm text-slate-100 placeholder:text-slate-500"
+            className="w-32 rounded-md border border-outline bg-panel-alt px-3 py-1.5 text-base text-slate-100 placeholder:text-slate-500"
           />
           <button
             onClick={handleGetLineup}

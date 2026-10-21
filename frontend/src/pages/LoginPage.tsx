@@ -36,7 +36,7 @@ export default function LoginPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-md border border-outline bg-panel-alt px-3 py-2 text-sm text-slate-100 focus:border-gold focus:outline-none"
+            className="mt-1 w-full rounded-md border border-outline bg-panel-alt px-3 py-2 text-base text-slate-100 focus:border-gold focus:outline-none"
           />
         </div>
         <div>

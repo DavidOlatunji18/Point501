@@ -5,7 +5,7 @@ hardcoded logic per question type."""
 
 import asyncio
 import json
-from typing import Any
+from typing import Any, AsyncIterator
 
 from app.core.config import get_settings
 from app.models.team import Team
@@ -62,17 +62,19 @@ def _format_articles_section(articles: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def _extract_text(content: list[Any]) -> str:
-    return "\n".join(block.text for block in content if block.type == "text")
-
-
 async def _roster_context_or_empty(team: Team | None) -> list[dict[str, Any]]:
     if team is None:
         return []
     return await context.build_roster_players_context(team)
 
 
-async def answer_question(message: str, team: Team | None) -> dict[str, Any]:
+async def stream_answer(message: str, team: Team | None) -> AsyncIterator[dict[str, Any]]:
+    """Yields {"type": "token", "text": ...} events as the answer is
+    generated, followed by one {"type": "done", "sources": [...]}. Streams
+    every model turn rather than just the final one - a turn that calls
+    tools rarely emits user-facing text before doing so, so in practice
+    this surfaces the same thing _extract_text() used to pull out of just
+    the final response, just as it's written instead of all at once."""
     settings = get_settings()
     client = get_client()
 
@@ -101,9 +103,16 @@ async def answer_question(message: str, team: Team | None) -> dict[str, Any]:
     # re-dispatched.
     tool_call_cache: dict[tuple[str, str], tuple[str, bool]] = {}
 
-    async def call_model(model: str, *, force_text: bool = False) -> Any:
+    last_response: Any = None
+
+    async def call_model_streaming(model: str, *, force_text: bool = False) -> AsyncIterator[str]:
+        """Streams this turn's text as it's generated; sets `last_response`
+        (closure var, mirroring how run_tool_calls mutates `sources` below)
+        to the complete parsed message once the stream finishes - the same
+        thing client.messages.create() used to return directly."""
+        nonlocal last_response
         kwargs: dict[str, Any] = {"tool_choice": {"type": "none"}} if force_text else {}
-        return await client.messages.create(
+        async with client.messages.stream(
             model=model,
             max_tokens=MAX_TOKENS,
             system=system_prompt,
@@ -111,7 +120,10 @@ async def answer_question(message: str, team: Team | None) -> dict[str, Any]:
             tools=chat_tools.TOOLS,
             thinking={"type": "adaptive"},
             **kwargs,
-        )
+        ) as stream:
+            async for text in stream.text_stream:
+                yield text
+            last_response = await stream.get_final_message()
 
     def _cache_key(block: Any) -> tuple[str, str]:
         return (block.name, json.dumps(block.input, sort_keys=True, default=str))
@@ -154,39 +166,56 @@ async def answer_question(message: str, team: Team | None) -> dict[str, Any]:
         messages.append({"role": "assistant", "content": content})
         messages.append({"role": "user", "content": tool_results})
 
+    any_text_yielded = False
+
+    async def call_model_and_yield(model: str, *, force_text: bool = False):
+        nonlocal any_text_yielded
+        async for chunk in call_model_streaming(model, force_text=force_text):
+            any_text_yielded = True
+            yield {"type": "token", "text": chunk}
+
     # Start on the fast model - most questions (definitions, general
     # strategy, anything the roster/article context already covers) resolve
     # in one shot. The moment a question actually needs tool-driven research,
     # escalate to the slower-but-more-thorough model for the rest of the
     # loop, since that's exactly the case where digging further matters.
     model = settings.anthropic_fast_model
-    response = await call_model(model)
+    async for event in call_model_and_yield(model):
+        yield event
+    response = last_response
 
     for _ in range(MAX_TOOL_ITERATIONS):
         if response.stop_reason == "refusal":
-            return {
-                "answer": (
+            yield {
+                "type": "token",
+                "text": (
                     "I wasn't able to answer that question - it may have "
                     "touched on a restricted topic."
                 ),
-                "sources": [],
             }
+            yield {"type": "done", "sources": []}
+            return
 
         if response.stop_reason != "tool_use":
             break
 
         await run_tool_calls(response.content)
         model = settings.anthropic_model
-        response = await call_model(model)
+        async for event in call_model_and_yield(model):
+            yield event
+        response = last_response
 
     if response.stop_reason == "tool_use":
         # Out of tool-call budget - rather than give up, force one last call
         # with tools disabled so the model answers with whatever it's
         # gathered so far instead of returning nothing.
         await run_tool_calls(response.content)
-        response = await call_model(model, force_text=True)
+        async for event in call_model_and_yield(model, force_text=True):
+            yield event
 
-    answer = _extract_text(response.content) or (
-        "I wasn't able to answer that question - try rephrasing or being more specific."
-    )
-    return {"answer": answer, "sources": list(sources.values())}
+    if not any_text_yielded:
+        yield {
+            "type": "token",
+            "text": "I wasn't able to answer that question - try rephrasing or being more specific.",
+        }
+    yield {"type": "done", "sources": list(sources.values())}

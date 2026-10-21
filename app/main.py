@@ -1,3 +1,11 @@
+import os
+
+# Must be set before anything below imports sentence-transformers (directly
+# or via the RAG article service) - the tokenizers library reads this at
+# import time, and .env doesn't propagate it (pydantic-settings only maps
+# declared Settings fields, and this isn't one - see app/core/config.py).
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
 from contextlib import asynccontextmanager
 from datetime import datetime
 
