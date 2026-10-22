@@ -132,6 +132,19 @@ jobs:
           kubectl wait --for=condition=available --timeout=180s deployment/backend -n point501
           kubectl wait --for=condition=available --timeout=180s deployment/frontend -n point501
 
+      - name: Dump pod diagnostics on failure
+        if: failure()
+        run: |
+          kubectl get pods -n point501 -o wide
+          for pod in $(kubectl get pods -n point501 -o name); do
+            echo "=== describe $pod ==="
+            kubectl describe -n point501 "$pod"
+            echo "=== logs $pod (current) ==="
+            kubectl logs -n point501 "$pod" --all-containers || true
+            echo "=== logs $pod (previous, if it crashed) ==="
+            kubectl logs -n point501 "$pod" --all-containers --previous || true
+          done
+
       - name: Smoke-test the backend through its Service
         run: |
           kubectl port-forward -n point501 svc/backend 8000:8000 &

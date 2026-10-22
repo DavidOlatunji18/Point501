@@ -18,6 +18,18 @@ spec:
       labels:
         app: backend
     spec:
+      # The backend creates its tables on startup (Base.metadata.create_all)
+      # with no connection-retry logic - if Postgres isn't accepting
+      # connections yet, it crashes immediately instead of waiting. Block
+      # here until Postgres's port actually answers, so the backend
+      # container never starts into that race at all.
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - until nc -z postgres 5432; do echo "waiting for postgres..."; sleep 2; done
       containers:
         - name: backend
           image: point501-backend:local
